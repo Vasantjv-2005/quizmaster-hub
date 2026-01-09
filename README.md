@@ -1,73 +1,108 @@
-# Welcome to your Lovable project
+# QuizMaster Hub
 
-## Project info
+An interactive quiz application built with Vite, React, TypeScript, Tailwind CSS, and shadcn/ui, backed by Supabase. Create questions, manage your personal question bank, and take quizzes with results and history tracking.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- Auth with Supabase Auth
+- Add Question with validation using `zod`
+- Manage Questions with delete, category and difficulty badges
+- Take Quiz
+  - Random quiz or only “My Questions” via `?createdBy=me`
+  - Single-question practice via `?questionId=<id>`
+  - Timer, progress, navigation grid, and result summary
+- Results & History pages
+- Answer visibility lock in My Questions (password `Vasantjv05$`)
+- Modern UI powered by shadcn/ui + Tailwind
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- Vite + React + TypeScript
+- Tailwind CSS + shadcn/ui
+- React Router v6
+- TanStack Query (React Query)
+- Supabase (DB + Auth)
+- Zod for validation
+- Lucide for icons
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Project Structure
 
-Changes made via Lovable will be committed automatically to this repo.
+- `src/pages/`
+  - `Index.tsx`, `Auth.tsx`, `Quiz.tsx`, `Results.tsx`, `History.tsx`
+  - `AddQuestion.tsx`, `ManageQuestions.tsx`
+- `src/components/quiz/`
+  - `Timer`, `ProgressBar`, `QuestionCard`, `QuestionNavigation`
+- `src/integrations/supabase/`
+  - `client.ts` (uses `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`)
+- `public/`
+  - `mind.png` (favicon), optional `favicon.ico`
 
-**Use your preferred IDE**
+## Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Prerequisites
+  - Node.js 18+ and npm
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- Install
+  - `npm install`
 
-Follow these steps:
+- Environment
+  - Create `.env` (or `.env.local`) with:
+    - `VITE_SUPABASE_URL=<your_supabase_url>`
+    - `VITE_SUPABASE_PUBLISHABLE_KEY=<your_supabase_anon_key>`
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Run (dev)
+  - `npm run dev`
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- Build
+  - `npm run build`
 
-# Step 3: Install the necessary dependencies.
-npm i
+- Preview
+  - `npm run preview`
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## Available Scripts
 
-**Edit a file directly in GitHub**
+- `npm run dev` – start dev server
+- `npm run build` – build for production
+- `npm run preview` – preview production build
+- `npm run lint` – lint code
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Routes
 
-**Use GitHub Codespaces**
+- `/` Home
+- `/auth` Sign in / Sign up
+- `/add-question` Create a question
+- `/manage-questions` View, quiz, and delete your questions
+- `/quiz` Start a quiz
+  - `/quiz?createdBy=me` Quiz using your own questions
+  - `/quiz?questionId=<id>` Quiz for a specific question
+- `/results` Quiz results
+- `/history` Past results
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Supabase Schema (overview)
 
-## What technologies are used for this project?
+- `questions`
+  - `id` (uuid), `question_text`, `option_a`..`option_d`, `correct_option` ('A'|'B'|'C'|'D')
+  - `category` (string), `difficulty` ('easy'|'medium'|'hard')
+  - `created_by` (user id), `created_at` (timestamp)
+- `quiz_results`
+  - `user_id`, `total_questions`, `attempted`, `correct`, `wrong`, `score`, `passed`, `time_taken`
+  - `answers` (JSON array with details per question)
 
-This project is built with:
+Adjust field names/types to match your Supabase migration if different.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## UI Details
 
-## How can I deploy this project?
+- Title set in `index.html` to `Quiz Master App`
+- Favicon set to `/mind.png` (place `mind.png` in `public/`)
+- Browsers cache favicons: hard refresh or add `?v=1` to break cache
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Conventions
 
-## Can I connect a custom domain to my Lovable project?
+- TypeScript strictness recommended
+- Keep UI logic in components, data-access via Supabase client
+- Use `zod` schemas to validate form data
+- Keep auth guards in pages that require login (redirect to `/auth`)
 
-Yes, you can!
+## License
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- MIT (or specify your license)
