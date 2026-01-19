@@ -246,14 +246,24 @@ const Index = () => {
 
         {/* Actions */}
         <div className="space-y-4">
-          <Button
-            size="lg"
-            onClick={() => navigate('/quiz')}
-            className="w-full gap-3 gradient-primary text-primary-foreground shadow-primary text-lg py-6"
-          >
-            <Play className="w-6 h-6" />
-            Start New Quiz
-          </Button>
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              size="lg"
+              onClick={() => navigate('/quiz')}
+              className="gap-3 gradient-primary text-primary-foreground shadow-primary text-lg py-6"
+            >
+              <Play className="w-6 h-6" />
+              All Questions
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => navigate('/quiz?createdBy=me')}
+              className="gap-3 gradient-success text-success-foreground shadow-success text-lg py-6"
+            >
+              <Brain className="w-6 h-6" />
+              My Questions
+            </Button>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Button
