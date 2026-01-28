@@ -18,17 +18,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const USE_DUMMY = (import.meta as any).env?.VITE_USE_DUMMY_AUTH === 'true';
+
   useEffect(() => {
-    // Set up auth state listener FIRST
+    if (USE_DUMMY) {
+      try {
+        const stored = localStorage.getItem('dummy_session');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setUser(parsed.user as User);
+          setSession(null);
+        }
+      } catch {}
+      setLoading(false);
+      return;
+    }
+
+    // Supabase auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -36,11 +50,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [USE_DUMMY]);
 
   const signUp = async (email: string, password: string, name: string) => {
+    if (USE_DUMMY) {
+      const usersRaw = localStorage.getItem('dummy_users');
+      const users: Record<string, { password: string; name: string; id: string }> = usersRaw ? JSON.parse(usersRaw) : {};
+      if (users[email]) {
+        return { error: new Error('User already registered') };
+      }
+      const id = crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+      users[email] = { password, name, id };
+      localStorage.setItem('dummy_users', JSON.stringify(users));
+      const dummyUser = { id, email, user_metadata: { name } } as unknown as User;
+      localStorage.setItem('dummy_session', JSON.stringify({ user: dummyUser }));
+      setUser(dummyUser);
+      setSession(null);
+      return { error: null };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
-    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -51,28 +80,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (!error && data.user) {
-      // Create profile
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({ user_id: data.user.id, name });
-      
       if (profileError) {
         console.error('Error creating profile:', profileError);
       }
     }
-
     return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    if (USE_DUMMY) {
+      const usersRaw = localStorage.getItem('dummy_users');
+      const users: Record<string, { password: string; name: string; id: string }> = usersRaw ? JSON.parse(usersRaw) : {};
+      const u = users[email];
+      if (!u || u.password !== password) {
+        return { error: new Error('Invalid login credentials') };
+      }
+      const dummyUser = { id: u.id, email, user_metadata: { name: u.name } } as unknown as User;
+      localStorage.setItem('dummy_session', JSON.stringify({ user: dummyUser }));
+      setUser(dummyUser);
+      setSession(null);
+      return { error: null };
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   };
 
   const signOut = async () => {
+    if (USE_DUMMY) {
+      localStorage.removeItem('dummy_session');
+      setUser(null);
+      setSession(null);
+      return;
+    }
     await supabase.auth.signOut();
   };
 

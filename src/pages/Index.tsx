@@ -29,6 +29,7 @@ const Index = () => {
   const [stats, setStats] = useState<Stats>({ totalQuizzes: 0, avgScore: 0, bestScore: 0 });
   const [userName, setUserName] = useState<string>('');
   const navigate = useNavigate();
+  const USE_DUMMY = (import.meta as any).env?.VITE_USE_DUMMY_AUTH === 'true';
 
   useEffect(() => {
     if (!loading && user) {
@@ -41,20 +42,38 @@ const Index = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('quiz_results')
-        .select('score')
-        .eq('user_id', user.id);
+      if (USE_DUMMY) {
+        const raw = localStorage.getItem('dummy_results');
+        const all: any[] = raw ? JSON.parse(raw) : [];
+        const mine = all.filter((r) => (user.id ? r.user_id === user.id : true));
+        if (mine.length > 0) {
+          const scores = mine.map((r) => r.score);
+          setStats({
+            totalQuizzes: mine.length,
+            avgScore: scores.reduce((a: number, b: number) => a + b, 0) / scores.length,
+            bestScore: Math.max(...scores),
+          });
+        } else {
+          setStats({ totalQuizzes: 0, avgScore: 0, bestScore: 0 });
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('quiz_results')
+          .select('score')
+          .eq('user_id', user.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (data && data.length > 0) {
-        const scores = data.map((r) => r.score);
-        setStats({
-          totalQuizzes: data.length,
-          avgScore: scores.reduce((a, b) => a + b, 0) / scores.length,
-          bestScore: Math.max(...scores),
-        });
+        if (data && data.length > 0) {
+          const scores = data.map((r) => r.score);
+          setStats({
+            totalQuizzes: data.length,
+            avgScore: scores.reduce((a, b) => a + b, 0) / scores.length,
+            bestScore: Math.max(...scores),
+          });
+        } else {
+          setStats({ totalQuizzes: 0, avgScore: 0, bestScore: 0 });
+        }
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -65,15 +84,21 @@ const Index = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('user_id', user.id)
-        .single();
+      if (USE_DUMMY) {
+        const metaName = (user as any)?.user_metadata?.name;
+        if (metaName) setUserName(metaName);
+        return;
+      } else {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('user_id', user.id)
+          .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data) {
-        setUserName(data.name);
+        if (error && (error as any).code !== 'PGRST116') throw error;
+        if (data) {
+          setUserName(data.name);
+        }
       }
     } catch (error) {
       console.error('Error fetching profile:', error);

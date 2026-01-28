@@ -61,6 +61,7 @@ const AddQuestion = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const USE_DUMMY = (import.meta as any).env?.VITE_USE_DUMMY_AUTH === 'true';
 
   React.useEffect(() => {
     if (!user) {
@@ -99,9 +100,12 @@ const AddQuestion = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('questions')
-        .insert({
+      if (USE_DUMMY) {
+        const raw = localStorage.getItem('dummy_questions');
+        const list: any[] = raw ? JSON.parse(raw) : [];
+        const id = crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+        const newQ = {
+          id,
           question_text: formData.question_text.trim(),
           option_a: formData.option_a.trim(),
           option_b: formData.option_b.trim(),
@@ -110,21 +114,42 @@ const AddQuestion = () => {
           correct_option: formData.correct_option,
           category: formData.category,
           difficulty: formData.difficulty,
-          created_by: user?.id,
-        })
-        .select('id')
-        .single();
+          created_by: user?.id || 'dummy',
+          created_at: new Date().toISOString(),
+        };
+        list.unshift(newQ);
+        localStorage.setItem('dummy_questions', JSON.stringify(list));
+        setSuccess(true);
+        setLastQuestionId(id);
+        toast({ title: 'Question Added!', description: 'Saved locally (dummy mode).' });
+      } else {
+        const { data, error } = await supabase
+          .from('questions')
+          .insert({
+            question_text: formData.question_text.trim(),
+            option_a: formData.option_a.trim(),
+            option_b: formData.option_b.trim(),
+            option_c: formData.option_c.trim(),
+            option_d: formData.option_d.trim(),
+            correct_option: formData.correct_option,
+            category: formData.category,
+            difficulty: formData.difficulty,
+            created_by: user?.id,
+          })
+          .select('id')
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setSuccess(true);
-      if (data?.id) {
-        setLastQuestionId(data.id);
+        setSuccess(true);
+        if (data?.id) {
+          setLastQuestionId(data.id);
+        }
+        toast({
+          title: 'Question Added!',
+          description: 'Your question has been added to the quiz pool.',
+        });
       }
-      toast({
-        title: 'Question Added!',
-        description: 'Your question has been added to the quiz pool.',
-      });
 
       // Reset form after success
       setTimeout(() => {

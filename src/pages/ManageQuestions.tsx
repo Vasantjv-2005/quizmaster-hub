@@ -41,6 +41,7 @@ const ManageQuestions = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const USE_DUMMY = (import.meta as any).env?.VITE_USE_DUMMY_AUTH === 'true';
 
   useEffect(() => {
     if (!user) {
@@ -52,14 +53,21 @@ const ManageQuestions = () => {
 
   const fetchQuestions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('created_by', user?.id)
-        .order('created_at', { ascending: false });
+      if (USE_DUMMY) {
+        const raw = localStorage.getItem('dummy_questions');
+        const all: any[] = raw ? JSON.parse(raw) : [];
+        const mine = user?.id ? all.filter((q) => q.created_by === user.id) : all;
+        setQuestions(mine);
+      } else {
+        const { data, error } = await supabase
+          .from('questions')
+          .select('*')
+          .eq('created_by', user?.id)
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setQuestions(data || []);
+        if (error) throw error;
+        setQuestions(data || []);
+      }
     } catch (error) {
       console.error('Error fetching questions:', error);
       toast({
@@ -77,25 +85,24 @@ const ManageQuestions = () => {
     setDeleting(true);
 
     try {
-      const { error } = await supabase
-        .from('questions')
-        .delete()
-        .eq('id', deleteId);
-
-      if (error) throw error;
-
-      setQuestions((prev) => prev.filter((q) => q.id !== deleteId));
-      toast({
-        title: 'Deleted',
-        description: 'Question has been removed.',
-      });
+      if (USE_DUMMY) {
+        const raw = localStorage.getItem('dummy_questions');
+        const list: any[] = raw ? JSON.parse(raw) : [];
+        const next = list.filter((q) => q.id !== deleteId);
+        localStorage.setItem('dummy_questions', JSON.stringify(next));
+        setQuestions((prev) => prev.filter((q) => q.id !== deleteId));
+      } else {
+        const { error } = await supabase
+          .from('questions')
+          .delete()
+          .eq('id', deleteId);
+        if (error) throw error;
+        setQuestions((prev) => prev.filter((q) => q.id !== deleteId));
+      }
+      toast({ title: 'Deleted', description: 'Question has been removed.' });
     } catch (error) {
       console.error('Error deleting question:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete question.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to delete question.', variant: 'destructive' });
     } finally {
       setDeleting(false);
       setDeleteId(null);

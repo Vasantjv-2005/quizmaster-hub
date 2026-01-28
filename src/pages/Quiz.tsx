@@ -51,6 +51,7 @@ const Quiz = () => {
   const queryParams = new URLSearchParams(location.search);
   const questionId = queryParams.get('questionId');
   const createdBy = queryParams.get('createdBy');
+  const USE_DUMMY = (import.meta as any).env?.VITE_USE_DUMMY_AUTH === 'true';
 
   useEffect(() => {
     if (!user) {
@@ -79,32 +80,48 @@ const Quiz = () => {
 
   const fetchQuestions = async () => {
     try {
-      if (questionId) {
-        const { data, error } = await supabase
-          .from('questions')
-          .select('*')
-          .eq('id', questionId)
-          .single();
-
-        if (error) throw error;
-        setQuestions(data ? [data] : []);
-      } else {
-        let query = supabase
-          .from('questions')
-          .select('*');
-
-        if (createdBy === 'me' && user?.id) {
-          query = query.eq('created_by', user.id);
-        } else {
-          query = query.limit(10);
+      if (USE_DUMMY) {
+        const raw = localStorage.getItem('dummy_questions');
+        const all: any[] = raw ? JSON.parse(raw) : [];
+        let list = all;
+        if (questionId) {
+          const q = all.find((q) => q.id === questionId);
+          list = q ? [q] : [];
+        } else if (createdBy === 'me' && user?.id) {
+          list = all.filter((q) => q.created_by === user.id);
         }
+        if (!questionId && createdBy !== 'me') {
+          list = all.sort(() => Math.random() - 0.5).slice(0, 10);
+        }
+        setQuestions(list || []);
+      } else {
+        if (questionId) {
+          const { data, error } = await supabase
+            .from('questions')
+            .select('*')
+            .eq('id', questionId)
+            .single();
 
-        const { data, error } = await query;
+          if (error) throw error;
+          setQuestions(data ? [data] : []);
+        } else {
+          let query = supabase
+            .from('questions')
+            .select('*');
 
-        if (error) throw error;
-        
-        const shuffled = (data || []).sort(() => Math.random() - 0.5);
-        setQuestions(shuffled);
+          if (createdBy === 'me' && user?.id) {
+            query = query.eq('created_by', user.id);
+          } else {
+            query = query.limit(10);
+          }
+
+          const { data, error } = await query;
+
+          if (error) throw error;
+          
+          const shuffled = (data || []).sort(() => Math.random() - 0.5);
+          setQuestions(shuffled);
+        }
       }
     } catch (error) {
       console.error('Error fetching questions:', error);
@@ -159,19 +176,38 @@ const Quiz = () => {
     const passed = score >= 50;
 
     try {
-      const { error } = await supabase.from('quiz_results').insert({
-        user_id: user?.id,
-        total_questions: questions.length,
-        attempted,
-        correct,
-        wrong,
-        score,
-        passed,
-        time_taken: timeTaken,
-        answers: answerDetails,
-      });
-
-      if (error) throw error;
+      if (!USE_DUMMY) {
+        const { error } = await supabase.from('quiz_results').insert({
+          user_id: user?.id,
+          total_questions: questions.length,
+          attempted,
+          correct,
+          wrong,
+          score,
+          passed,
+          time_taken: timeTaken,
+          answers: answerDetails,
+        });
+        if (error) throw error;
+      } else {
+        const raw = localStorage.getItem('dummy_results');
+        const list: any[] = raw ? JSON.parse(raw) : [];
+        const result = {
+          id: (crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)),
+          user_id: user?.id || 'dummy',
+          total_questions: questions.length,
+          attempted,
+          correct,
+          wrong,
+          score,
+          passed,
+          time_taken: timeTaken,
+          answers: answerDetails,
+          created_at: new Date().toISOString(),
+        };
+        list.unshift(result);
+        localStorage.setItem('dummy_results', JSON.stringify(list));
+      }
 
       navigate('/results', {
         state: {

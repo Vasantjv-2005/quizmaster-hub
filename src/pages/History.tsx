@@ -24,6 +24,7 @@ const History = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const USE_DUMMY = (import.meta as any).env?.VITE_USE_DUMMY_AUTH === 'true';
 
   useEffect(() => {
     if (!user) {
@@ -35,13 +36,20 @@ const History = () => {
 
   const fetchHistory = async () => {
     try {
-      const { data, error } = await supabase
-        .from('quiz_results')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (USE_DUMMY) {
+        const raw = localStorage.getItem('dummy_results');
+        const all: any[] = raw ? JSON.parse(raw) : [];
+        const mine = user?.id ? all.filter((r) => r.user_id === user.id) : all;
+        setResults(mine);
+      } else {
+        const { data, error } = await supabase
+          .from('quiz_results')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setResults(data || []);
+        if (error) throw error;
+        setResults(data || []);
+      }
     } catch (error) {
       console.error('Error fetching history:', error);
     } finally {
